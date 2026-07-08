@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real Bitrate & Audio Stutter Simulator</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* Styling custom sliders */
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #c084fc;
+      cursor: pointer;
+      transition: background 0.15s ease-in-out;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: #e9d5ff;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border: 0;
+      border-radius: 50%;
+      background: #c084fc;
+      cursor: pointer;
+      transition: background 0.15s ease-in-out;
+    }
+    input[type="range"]::-moz-range-thumb:hover {
+      background: #e9d5ff;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-purple-500/30">
+
+  <!-- Header -->
+  <header class="border-b border-slate-900 bg-slate-950/80 backdrop-blur sticky top-0 z-50 px-4 py-3 sm:px-6">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="bg-gradient-to-tr from-purple-600 to-pink-600 p-2 rounded-xl shadow-lg shadow-purple-500/20">
+          <i data-lucide="radio" class="w-6 h-6 text-white animate-pulse"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight bg-gradient-to-r from-purple-400 to-pink-300 bg-clip-text text-transparent">
+            Bitrate & Audio Stutter Engine
+          </h1>
+          <p class="text-xs text-slate-400">Authentic compression blocks & dynamic audio drop/resume pipeline</p>
+        </div>
+      </div>
+      
+      <!-- Audio Permission Shield -->
+      <div class="flex items-center gap-3">
+        <button id="enable-audio-btn" class="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 active:scale-95 transition text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-lg shadow-amber-600/20">
+          <i data-lucide="volume-2" class="w-4 h-4"></i>
+          Initialize Audio Engine
+        </button>
+        <span id="recording-indicator" class="hidden items-center gap-2 bg-red-950 border border-red-500/30 px-3 py-1.5 rounded-full text-xs text-red-400 font-medium">
+          <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+          RECORDING...
+        </span>
+        <button id="record-btn" class="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 active:scale-95 transition text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-purple-600/20 disabled:opacity-50">
+          <i data-lucide="circle-dot" class="w-4 h-4"></i>
+          Record Video
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- Left Column: Controls & Upload -->
+    <section class="lg:col-span-4 flex flex-col gap-5">
+      
+      <!-- Video Input Options -->
+      <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 backdrop-blur-sm">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
+          <i data-lucide="hard-drive" class="w-4 h-4 text-purple-400"></i> Video Input
+        </h2>
+        
+        <div id="file-dropzone" class="border-2 border-dashed border-slate-800 hover:border-purple-500/50 rounded-xl p-6 text-center cursor-pointer transition group mb-4">
+          <input type="file" id="video-file-input" accept="video/*" class="hidden" />
+          <div class="flex flex-col items-center justify-center gap-2">
+            <div class="p-3 bg-slate-950 rounded-full text-slate-400 group-hover:text-purple-400 group-hover:scale-110 transition duration-300">
+              <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+            </div>
+            <p class="text-xs text-slate-300 font-medium">Upload Video with Audio Track</p>
+            <p class="text-[10px] text-slate-500">Video audio will play through our engine</p>
+          </div>
+        </div>
+
+        <div class="p-3 bg-purple-950/20 rounded-xl border border-purple-500/10 text-xs text-purple-300 flex items-start gap-2.5">
+          <i data-lucide="info" class="w-4 h-4 text-purple-400 shrink-0 mt-0.5"></i>
+          <p>This engine acts as a <strong>real-time video & audio transcoder</strong>. Audio will sync precisely to frozen frames, stuttering, and then jumping back to match real elapsed video playback!</p>
+        </div>
+      </div>
+
+      <!-- Glitch Dynamics Control Panel -->
+      <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 backdrop-blur-sm flex flex-col gap-5">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+            <i data-lucide="sliders" class="w-4 h-4 text-purple-400"></i> Simulation Controls
+          </h2>
+          <button id="reset-controls-btn" class="text-xs text-slate-500 hover:text-slate-300 transition">
+            Reset
+          </button>
+        </div>
+
+        <!-- Frame Hold Trigger Rate -->
+        <div class="space-y-2">
+          <div class="flex justify-between items-center text-xs text-slate-300">
+            <label for="hold-freq" class="font-medium flex items-center gap-1.5">
+              Hold Chance (per frame)
+            </label>
+            <span id="hold-freq-val" class="font-mono text-purple-400">0.8%</span>
+          </div>
+          <input id="hold-freq" type="range" min="0.1" max="5.0" step="0.1" value="0.8" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500" />
+        </div>
+
+        <!-- Frame Hold Duration -->
+        <div class="space-y-2">
+          <div class="flex justify-between items-center text-xs text-slate-300">
+            <label for="hold-duration" class="font-medium flex items-center gap-1.5">
+              Hold Duration
+            </label>
+            <span id="hold-duration-val" class="font-mono text-purple-400">0.5s</span>
+          </div>
+          <input id="hold-duration" type="range" min="0.2" max="2.0" step="0.1" value="0.5" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500" />
+        </div>
+
+        <!-- Audio Stutter Type during freeze -->
+        <div class="space-y-2">
+          <label class="text-xs text-slate-300 font-medium block">Audio Behavior During Hold</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button id="audio-mute-btn" class="py-2 rounded-lg border border-slate-800 text-xs font-semibold bg-slate-950 text-slate-400 hover:text-white transition">
+              Silence
+            </button>
+            <button id="audio-stutter-btn" class="py-2 rounded-lg border border-purple-500/50 text-xs font-semibold bg-purple-950/40 text-purple-200 transition">
+              Stutter
+            </button>
+            <button id="audio-buzz-btn" class="py-2 rounded-lg border border-slate-800 text-xs font-semibold bg-slate-950 text-slate-400 hover:text-white transition">
+              Buzz Loop
+            </button>
+          </div>
+        </div>
+
+        <!-- Compression Bitrate level immediately after freeze -->
+        <div class="space-y-2">
+          <div class="flex justify-between items-center text-xs text-slate-300">
+            <label for="bitrate-compress" class="font-medium flex items-center gap-1.5">
+              Post-Hold Bitrate Compression
+            </label>
+            <span id="bitrate-compress-val" class="font-mono text-purple-400">Extreme (8kbps)</span>
+          </div>
+          <input id="bitrate-compress" type="range" min="0.01" max="0.3" step="0.01" value="0.03" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500" />
+        </div>
+
+        <!-- Recovery Speed -->
+        <div class="space-y-2">
+          <div class="flex justify-between items-center text-xs text-slate-300">
+            <label for="recovery-speed" class="font-medium flex items-center gap-1.5">
+              Bitrate Recovery Time
+            </label>
+            <span id="recovery-speed-val" class="font-mono text-purple-400">1.8s</span>
+          </div>
+          <input id="recovery-speed" type="range" min="0.5" max="5.0" step="0.1" value="1.8" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Previews & Analysis -->
+    <section class="lg:col-span-8 flex flex-col gap-6">
+      
+      <!-- Video Previews Panel -->
+      <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 backdrop-blur-sm flex-1 flex flex-col gap-4">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+            <i data-lucide="monitor" class="w-4 h-4 text-purple-400"></i> Active Stream Monitor
+          </h2>
+          <!-- Real-Time Metrics -->
+          <div class="flex items-center gap-2 text-xs">
+            <div class="flex items-center gap-1 bg-slate-950 px-2.5 py-1 rounded-md border border-slate-800">
+              <span class="text-slate-500">Audio System:</span>
+              <span id="audio-status-label" class="font-semibold text-red-400">Uninitialized</span>
+            </div>
+            <div class="flex items-center gap-1 bg-slate-950 px-2.5 py-1 rounded-md border border-slate-800">
+              <span class="text-slate-500">Live Status:</span>
+              <span id="status-label" class="font-semibold text-emerald-400">Normal</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Screen Layout -->
+        <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-purple-500/20 shadow-lg shadow-purple-500/5 min-h-[300px] md:min-h-[450px] flex flex-col">
+          
+          <!-- Glitched Output Screen (The Canvas) -->
+          <div class="flex-1 relative flex items-center justify-center bg-slate-950">
+            <canvas id="output-canvas" class="w-full max-h-[450px] object-contain"></canvas>
+            
+            <!-- Audio Permission Overlay Block -->
+            <div id="audio-blocker" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6 z-20">
+              <div class="w-16 h-16 bg-purple-950/60 border border-purple-500/30 text-purple-400 rounded-full flex items-center justify-center mb-4">
+                <i data-lucide="volume-x" class="w-8 h-8 animate-bounce"></i>
+              </div>
+              <h3 class="text-lg font-bold text-slate-100">Audio Context Required</h3>
+              <p class="text-sm text-slate-400 max-w-md mt-1 mb-6">
+                To capture your video's audio, modify sample rates, and trigger high-fidelity stutters, browsers require active manual user input.
+              </p>
+              <button id="activate-audio-overlay-btn" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold px-6 py-3 rounded-xl shadow-lg shadow-purple-500/25 transition transform active:scale-95">
+                Enable Audio & Start Demo
+              </button>
+            </div>
+
+            <!-- Upload Video Prompt -->
+            <div id="upload-hint" class="hidden absolute top-4 left-4 right-4 bg-slate-900/90 border border-purple-500/30 rounded-xl p-3 z-10 flex items-center justify-between text-xs">
+              <span class="text-purple-300 font-medium">⚡ Tip: Upload your own MP4 video to test full custom audio syncing!</span>
+              <button onclick="document.getElementById('video-file-input').click()" class="bg-purple-600 hover:bg-purple-500 text-white px-2.5 py-1 rounded-md font-semibold">Upload</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Video element (Visible/Active to rendering engines on mobile, but visually invisible) -->
+        <video id="input-video" crossorigin="anonymous" playsinline webkit-playsinline class="absolute opacity-0 pointer-events-none w-px h-px"></video>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Export/Share Overlay Modal -->
+  <div id="export-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+      <button id="close-modal-btn" class="absolute top-4 right-4 text-slate-400 hover:text-slate-100 transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      <div class="flex flex-col items-center text-center gap-3">
+        <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full">
+          <i data-lucide="check-circle" class="w-8 h-8"></i>
+        </div>
+        <h3 class="text-lg font-bold text-slate-100">Render Export Complete</h3>
+        <p class="text-sm text-slate-400">Your glitchy screen-recording containing modified frame bitrates and synchronized stuttered audio is ready!</p>
+        
+        <!-- Video Player preview -->
+        <video id="recorded-preview" controls class="w-full rounded-lg border border-slate-800 bg-black max-h-56 mt-2"></video>
+
+        <div class="flex gap-3 w-full mt-4">
+          <button id="download-btn" class="flex-1 bg-purple-600 hover:bg-purple-500 active:scale-95 transition text-white py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2">
+            <i data-lucide="download" class="w-4 h-4"></i>
+            Download Video
+          </button>
+          <button id="close-modal-footer-btn" class="flex-1 bg-slate-800 hover:bg-slate-700 active:scale-95 transition text-slate-300 py-2.5 rounded-xl font-semibold text-sm">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="border-t border-slate-900 bg-slate-950 py-4 px-4 text-center text-xs text-slate-500">
+    <p>© 2026 Screen Recorder Glitch Suite • Canvas Transcoding Engine</p>
+  </footer>
+
+  <script>
+    lucide.createIcons();
+
+    // DOM References
+    const enableAudioBtn = document.getElementById('enable-audio-btn');
+    const activateAudioOverlayBtn = document.getElementById('activate-audio-overlay-btn');
+    const audioBlocker = document.getElementById('audio-blocker');
+    const uploadHint = document.getElementById('upload-hint');
+    const videoFileInput = document.getElementById('video-file-input');
+    const inputVideo = document.getElementById('input-video');
+    const fileDropzone = document.getElementById('file-dropzone');
+    const outputCanvas = document.getElementById('output-canvas');
+    const ctx = outputCanvas.getContext('2d', { willReadFrequently: true });
+    
+    // Monitors
+    const statusLabel = document.getElementById('status-label');
+    const audioStatusLabel = document.getElementById('audio-status-label');
+    const recordingIndicator = document.getElementById('recording-indicator');
+    const recordBtn = document.getElementById('record-btn');
+
+    // Controls
+    const holdFreqSlider = document.getElementById('hold-freq');
+    const holdFreqVal = document.getElementById('hold-freq-val');
+    const holdDurationSlider = document.getElementById('hold-duration');
+    const holdDurationVal = document.getElementById('hold-duration-val');
+    const bitrateCompressSlider = document.getElementById('bitrate-compress');
+    const bitrateCompressVal = document.getElementById('bitrate-compress-val');
+    const recoverySpeedSlider = document.getElementById('recovery-speed');
+    const recoverySpeedVal = document.getElementById('recovery-speed-val');
+    
+    const audioMuteBtn = document.getElementById('audio-mute-btn');
+    const audioStutterBtn = document.getElementById('audio-stutter-btn');
+    const audioBuzzBtn = document.getElementById('audio-buzz-btn');
+    const resetControlsBtn = document.getElementById('reset-controls-btn');
+
+    // Modals
+    const exportModal = document.getElementById('export-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const closeModalFooterBtn = document.getElementById('close-modal-footer-btn');
+    const downloadBtn = document.getElementById('download-btn');
+    const recordedPreview = document.getElementById('recorded-preview');
+
+    // Audio Graph Variables
+    let audioCtx = null;
+    let sourceNode = null;
+    let mainGainNode = null;
+    let stutterOsc = null;
+    let stutterGain = null;
+    let destinationNode = null;
+
+    // Simulation Parameters
+    let isHolding = false;
+    let holdEndTime = 0;
+    let lastHoldTriggerTime = 0;
+    let heldImageSnapshot = null;
+    let lastRenderTime = 0;
+    let audioBehavior = 'stutter'; // 'mute' | 'stutter' | 'buzz'
+
+    // Real-Time Frame Compression Cache
+    let cachedCompressedFrame = null;
+    let frameDownscalerCanvas = document.createElement('canvas');
+    let frameDownscalerCtx = frameDownscalerCanvas.getContext('2d');
+
+    // Recording Setup
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let isRecording = false;
+
+    // Web Audio Hookup State
+    let audioConnected = false;
+
+    // Audio Initialization Trigger
+    function initAudioEngine() {
+      if (audioCtx) return;
+
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      
+      // Setup dynamic nodes
+      mainGainNode = audioCtx.createGain();
+      mainGainNode.gain.setValueAtTime(1.0, audioCtx.currentTime);
+
+      // Create stutter dynamic gain node
+      stutterGain = audioCtx.createGain();
+      stutterGain.gain.setValueAtTime(1.0, audioCtx.currentTime);
+
+      // Create a local audio destination to record the dynamic audio
+      destinationNode = audioCtx.createMediaStreamDestination();
+      
+      // Audio graph: Source -> mainGainNode -> stutterGain -> Destination & Speakers
+      mainGainNode.connect(stutterGain);
+      stutterGain.connect(audioCtx.destination);
+      stutterGain.connect(destinationNode);
+
+      // Update UI Status
+      audioStatusLabel.textContent = "Online";
+      audioStatusLabel.className = "font-semibold text-emerald-400";
+      enableAudioBtn.classList.add('hidden');
+      audioBlocker.classList.add('hidden');
+      uploadHint.classList.remove('hidden');
+
+      // Initialize with default demo synthetic source
+      loadSyntheticSource();
+    }
+
+    enableAudioBtn.addEventListener('click', initAudioEngine);
+    activateAudioOverlayBtn.addEventListener('click', initAudioEngine);
+
+    // Dynamic UI Sliders updating
+    function updateControlsUI() {
+      holdFreqVal.textContent = `${holdFreqSlider.value}%`;
+      holdDurationVal.textContent = `${holdDurationSlider.value}s`;
+      
+      const compVal = parseFloat(bitrateCompressSlider.value);
+      if (compVal <= 0.02) bitrateCompressVal.textContent = "Extreme (4kbps)";
+      else if (compVal <= 0.08) bitrateCompressVal.textContent = "Severe (16kbps)";
+      else if (compVal <= 0.18) bitrateCompressVal.textContent = "Heavy (64kbps)";
+      else bitrateCompressVal.textContent = "Medium (128kbps)";
+
+      recoverySpeedVal.textContent = `${recoverySpeedSlider.value}s`;
+    }
+
+    [holdFreqSlider, holdDurationSlider, bitrateCompressSlider, recoverySpeedSlider].forEach(slider => {
+      slider.addEventListener('input', updateControlsUI);
+    });
+
+    // Reset controls functionality
+    resetControlsBtn.addEventListener('click', () => {
+      holdFreqSlider.value = 0.8;
+      holdDurationSlider.value = 0.5;
+      bitrateCompressSlider.value = 0.03;
+      recoverySpeedSlider.value = 1.8;
+      setAudioBehavior('stutter');
+      updateControlsUI();
+    });
+
+    // Audio Behavior Mode Selector Toggles
+    function setAudioBehavior(mode) {
+      audioBehavior = mode;
+      [audioMuteBtn, audioStutterBtn, audioBuzzBtn].forEach(btn => {
+        btn.className = "py-2 rounded-lg border border-slate-800 text-xs font-semibold bg-slate-950 text-slate-400 hover:text-white transition";
+      });
+
+      if (mode === 'mute') {
+        audioMuteBtn.className = "py-2 rounded-lg border border-purple-500/50 text-xs font-semibold bg-purple-950/40 text-purple-200 transition";
+      } else if (mode === 'stutter') {
+        audioStutterBtn.className = "py-2 rounded-lg border border-purple-500/50 text-xs font-semibold bg-purple-950/40 text-purple-200 transition";
+      } else if (mode === 'buzz') {
+        audioBuzzBtn.className = "py-2 rounded-lg border border-purple-500/50 text-xs font-semibold bg-purple-950/40 text-purple-200 transition";
+      }
+    }
+
+    audioMuteBtn.addEventListener('click', () => setAudioBehavior('mute'));
+    audioStutterBtn.addEventListener('click', () => setAudioBehavior('stutter'));
+    audioBuzzBtn.addEventListener('click', () => setAudioBehavior('buzz'));
+
+    // Handle uploaded file drops
+    fileDropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      fileDropzone.classList.add('border-purple-500', 'bg-purple-950/10');
+    });
+    fileDropzone.addEventListener('dragleave', () => {
+      fileDropzone.classList.remove('border-purple-500', 'bg-purple-950/10');
+    });
+    fileDropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      fileDropzone.classList.remove('border-purple-500', 'bg-purple-950/10');
+      if (e.dataTransfer.files.length > 0) {
+        handleUploadedVideo(e.dataTransfer.files[0]);
+      }
+    });
+    fileDropzone.addEventListener('click', () => videoFileInput.click());
+    videoFileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        handleUploadedVideo(e.target.files[0]);
+      }
+    });
+
+    // Handle Uploaded File Processing with true Audio node connection
+    function handleUploadedVideo(file) {
+      if (!audioCtx) {
+        initAudioEngine();
+      }
+
+      const fileURL = URL.createObjectURL(file);
+      
+      // Clean previous audio source mapping
+      if (sourceNode) {
+        sourceNode.disconnect();
+      }
+
+      // Configure HTML Video element
+      inputVideo.srcObject = null;
+      inputVideo.src = fileURL;
+      inputVideo.loop = false; // Disable looping to let the recording auto-stop when finished
+      inputVideo.muted = false; // Important: Audio routed via Web Audio node
+      
+      // Connect sound track to graph
+      sourceNode = audioCtx.createMediaElementSource(inputVideo);
+      sourceNode.connect(mainGainNode);
+
+      inputVideo.addEventListener('loadedmetadata', () => {
+        outputCanvas.width = inputVideo.videoWidth || 640;
+        outputCanvas.height = inputVideo.videoHeight || 480;
+      });
+
+      // Automatically stop recording when the video reaches its natural end
+      inputVideo.addEventListener('ended', () => {
+        if (isRecording) {
+          stopRecordingWithAudio();
+        }
+      });
+
+      // Play with mobile fallback mechanics
+      inputVideo.play().then(() => {
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+      }).catch(err => {
+        console.warn("Autoplay block detected, attempting fallback", err);
+        // Fallback for strict mobile browsers: temporarily mute to force-start play sequence
+        inputVideo.muted = true;
+        inputVideo.play().then(() => {
+          inputVideo.muted = false;
+        }).catch(e => console.error("Critical playback block on mobile", e));
+      });
+    }
+
+    // Fallback/Synthetic Video Generator Mode with synthesized dynamic tone track
+    function loadSyntheticSource() {
+      // Create a basic synthesizer sequence for local demo mode since there is no video file yet
+      if (sourceNode) {
+        sourceNode.disconnect();
+        sourceNode = null;
+      }
+
+      // Continuous rhythmic synthesised wave representing the audio track
+      const synthOsc = audioCtx.createOscillator();
+      const synthGain = audioCtx.createGain();
+      synthOsc.type = 'triangle';
+      synthOsc.frequency.setValueAtTime(140, audioCtx.currentTime); // low bass pulse
+      
+      synthGain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      
+      // LFO modulation to keep sound dynamic
+      const lfo = audioCtx.createOscillator();
+      lfo.frequency.setValueAtTime(3, audioCtx.currentTime); // 3Hz modulation
+      const lfoGain = audioCtx.createGain();
+      lfoGain.gain.setValueAtTime(40, audioCtx.currentTime);
+      
+      lfo.connect(lfoGain);
+      lfoGain.connect(synthOsc.frequency);
+      
+      synthOsc.connect(synthGain);
+      synthGain.connect(mainGainNode);
+      
+      synthOsc.start();
+      lfo.start();
+
+      // Configure default Canvas dimensions
+      outputCanvas.width = 640;
+      outputCanvas.height = 480;
+    }
+
+    // -------------------------------------------------------------
+    // RENDERING PIPELINE WITH TRUE BITRATE TRANSCODING
+    // -------------------------------------------------------------
+    let angleOffset = 0; // fallback graphics movement
+    
+    function drawFallbackGraphics(ctx, w, h, time) {
+      // Background gradient
+      const grad = ctx.createLinearGradient(0, 0, w, h);
+      grad.addColorStop(0, '#0f172a');
+      grad.addColorStop(1, '#020617');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Radar / Grid system
+      ctx.strokeStyle = 'rgba(168, 85, 247, 0.08)';
+      ctx.lineWidth = 1;
+      const spacing = 30;
+      for (let x = 0; x < w; x += spacing) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      }
+      for (let y = 0; y < h; y += spacing) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }
+
+      // Smooth orbiting sphere
+      angleOffset += 0.02;
+      const centerX = w / 2;
+      const centerY = h / 2;
+      const orbitRadius = Math.min(w, h) * 0.3;
+      const ballX = centerX + Math.cos(angleOffset) * orbitRadius;
+      const ballY = centerY + Math.sin(angleOffset) * orbitRadius;
+
+      // Outer rings
+      ctx.strokeStyle = 'rgba(99, 102, 241, 0.4)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, orbitRadius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Core Orbiting Core
+      ctx.fillStyle = '#ec4899';
+      ctx.shadowColor = '#ec4899';
+      ctx.shadowBlur = 25;
+      ctx.beginPath();
+      ctx.arc(ballX, ballY, 20, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Clock and metadata
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 20px monospace';
+      ctx.fillText("SYNTHETIC DEMO PIPELINE", 30, 50);
+      
+      const d = new Date();
+      const timeStr = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}.${(d.getMilliseconds()/10).toFixed(0).padStart(2, '0')}`;
+      ctx.font = '16px monospace';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(`TIME: ${timeStr}`, 30, 80);
+      ctx.fillText(`AUDIO STATUS: ACTIVE SYNTH`, 30, 110);
+    }
+
+    // Main transcode loop mapping frame freezes and audio stutters
+    function processAndRender(timestamp) {
+      if (!timestamp) timestamp = performance.now();
+      
+      const w = outputCanvas.width;
+      const h = outputCanvas.height;
+
+      if (!audioCtx) {
+        // Skip updating until active Audio Context is unlocked
+        requestAnimationFrame(processAndRender);
+        return;
+      }
+
+      // Check for manual source play sync
+      const isCustomVideo = (inputVideo.src && inputVideo.src !== "");
+
+      // 1. EVALUATE HOLD TRANSITIONS
+      const holdChance = parseFloat(holdFreqSlider.value) / 100;
+      const holdDuration = parseFloat(holdDurationSlider.value) * 1000;
+      const recoveryDuration = parseFloat(recoverySpeedSlider.value) * 1000;
+
+      if (isHolding) {
+        if (timestamp >= holdEndTime) {
+          // RELEASE HOLD!
+          isHolding = false;
+          lastHoldTriggerTime = timestamp;
+          statusLabel.textContent = "Bitrate Shock";
+          statusLabel.className = "font-bold text-pink-400 animate-pulse";
+
+          // Recover normal video rendering feed & sync audio back to natural flow
+          if (isCustomVideo) {
+            inputVideo.muted = false;
+          }
+          // Resume clean audio graph gain
+          stutterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+          stutterGain.gain.setValueAtTime(1.0, audioCtx.currentTime);
+
+        } else {
+          // WE ARE CURRENTLY FREEZING!
+          // Paint frozen image snapshot
+          if (heldImageSnapshot) {
+            ctx.putImageData(heldImageSnapshot, 0, 0);
+          }
+          
+          statusLabel.textContent = "Frame Hold Active";
+          statusLabel.className = "font-bold text-red-500 animate-pulse";
+
+          // Apply audio behavior during this freeze frame!
+          applyAudioHoldGlitch();
+        }
+      } else {
+        // Chance to enter frame freeze
+        const timeSinceLastGlitch = timestamp - lastHoldTriggerTime;
+        if (Math.random() < holdChance && timeSinceLastGlitch > (recoveryDuration + 1500)) {
+          isHolding = true;
+          holdEndTime = timestamp + holdDuration;
+
+          // Snapshot current frame state before freezing
+          try {
+            heldImageSnapshot = ctx.getImageData(0, 0, w, h);
+          } catch(e) {
+            heldImageSnapshot = null;
+          }
+        }
+      }
+
+      // 2. MAIN DRAW PIPELINE (If not holding, decode and render current frame)
+      if (!isHolding) {
+        // Ensure gain is clean
+        stutterGain.gain.setValueAtTime(1.0, audioCtx.currentTime);
+
+        const elapsedSinceHold = timestamp - lastHoldTriggerTime;
+        let recoveryFactor = 1.0; 
+        
+        if (elapsedSinceHold < recoveryDuration) {
+          recoveryFactor = elapsedSinceHold / recoveryDuration;
+          statusLabel.textContent = "Bitrate Recovering";
+          statusLabel.className = "font-semibold text-yellow-500";
+        } else {
+          statusLabel.textContent = "Stream Normal";
+          statusLabel.className = "font-semibold text-emerald-400";
+        }
+
+        // Real Bitrate Compression Pipeline
+        if (recoveryFactor < 1.0) {
+          // Map slider quality scale directly to image encoding blob metrics (0.01 worst - 0.95 high)
+          const baseCompress = parseFloat(bitrateCompressSlider.value);
+          const currentQuality = baseCompress + (1.0 - baseCompress) * recoveryFactor;
+
+          // Render clean frame onto a hidden temporary scaling buffer
+          frameDownscalerCanvas.width = w;
+          frameDownscalerCanvas.height = h;
+          
+          if (isCustomVideo) {
+            frameDownscalerCtx.drawImage(inputVideo, 0, 0, w, h);
+          } else {
+            drawFallbackGraphics(frameDownscalerCtx, w, h, timestamp);
+          }
+
+          // Convert to direct JPEG / WebP compression blobs to get real, non-simulated compression macroblocking!
+          const dataUrl = frameDownscalerCanvas.toDataURL('image/jpeg', currentQuality);
+          const img = new Image();
+          img.onload = () => {
+            ctx.clearRect(0, 0, w, h);
+            ctx.drawImage(img, 0, 0, w, h);
+          };
+          img.src = dataUrl;
+
+        } else {
+          // Render raw clean stream
+          if (isCustomVideo) {
+            ctx.drawImage(inputVideo, 0, 0, w, h);
+          } else {
+            drawFallbackGraphics(ctx, w, h, timestamp);
+          }
+        }
+      }
+
+      // HUD watermark indicator
+      drawOverlayMetadata(ctx, w, h);
+
+      lastRenderTime = timestamp;
+      requestAnimationFrame(processAndRender);
+    }
+
+    // Dynamic Sound Stuttering Engine
+    function applyAudioHoldGlitch() {
+      const now = audioCtx.currentTime;
+
+      if (audioBehavior === 'mute') {
+        // Drop sound volume completely during the frame freeze
+        stutterGain.gain.setValueAtTime(0.0, now);
+      } 
+      else if (audioBehavior === 'stutter') {
+        // Simulate digital lag by cutting audio on/off extremely fast (e.g. 15Hz gate)
+        const stutterRate = 0.06; // period in seconds
+        const currentGate = Math.floor(now / stutterRate) % 2 === 0;
+        stutterGain.gain.setValueAtTime(currentGate ? 1.0 : 0.05, now);
+      } 
+      else if (audioBehavior === 'buzz') {
+        // Creates a metallic buzz frequency matching the moment of the crash
+        const stutterRate = 0.015; // super fast metallic period
+        const currentGate = Math.floor(now / stutterRate) % 2 === 0;
+        stutterGain.gain.setValueAtTime(currentGate ? 0.8 : 0.1, now);
+      }
+    }
+
+    function drawOverlayMetadata(context, w, h) {
+      context.save();
+      // Simple HUD element
+      context.strokeStyle = 'rgba(192, 132, 252, 0.2)';
+      context.lineWidth = 2;
+      context.strokeRect(8, 8, w - 16, h - 16);
+      
+      // Fine recording layout indicators
+      context.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      context.font = '9px monospace';
+      context.fillText("REC ● LIVE STREAM CAPTURE", 20, h - 20);
+      context.restore();
+    }
+
+    // Start processing rendering loops
+    requestAnimationFrame(processAndRender);
+    updateControlsUI();
+
+    // -------------------------------------------------------------
+    // AUDIO-ENABLED RECORDING EXPORTER
+    // -------------------------------------------------------------
+    recordBtn.addEventListener('click', () => {
+      if (!isRecording) {
+        startRecordingWithAudio();
+      } else {
+        stopRecordingWithAudio();
+      }
+    });
+
+    function startRecordingWithAudio() {
+      if (!audioCtx) {
+        showSystemWarning("Please initialize the Audio Engine first.");
+        return;
+      }
+      recordedChunks = [];
+
+      // Combine Canvas video stream and Web Audio destination output node!
+      const canvasStream = outputCanvas.captureStream(30);
+      const audioTrack = destinationNode.stream.getAudioTracks()[0];
+
+      if (audioTrack) {
+        canvasStream.addTrack(audioTrack);
+      }
+
+      let options = { mimeType: 'video/webm; codecs=vp9,opus' };
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options = { mimeType: 'video/webm; codecs=vp8,opus' };
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+          options = { mimeType: 'video/webm' };
+        }
+      }
+
+      try {
+        mediaRecorder = new MediaRecorder(canvasStream, options);
+      } catch (err) {
+        showSystemWarning("Record pipeline failed to configure on this browser.");
+        return;
+      }
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunks.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        const videoUrl = URL.createObjectURL(blob);
+        
+        recordedPreview.src = videoUrl;
+        recordedPreview.load();
+        
+        exportModal.classList.remove('hidden');
+
+        downloadBtn.onclick = () => {
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = videoUrl;
+          a.download = `buggy-sound-recording-${Date.now()}.webm`;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(videoUrl);
+          }, 100);
+        };
+      };
+
+      mediaRecorder.start(100);
+      isRecording = true;
+      recordBtn.innerHTML = `<i data-lucide="square" class="w-4 h-4"></i> Stop Recording`;
+      recordBtn.className = "flex items-center gap-2 bg-red-600 hover:bg-red-500 active:scale-95 transition text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-red-600/20";
+      recordingIndicator.classList.remove('hidden');
+      recordingIndicator.classList.add('flex');
+      lucide.createIcons();
+    }
+
+    function stopRecordingWithAudio() {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+      isRecording = false;
+      recordBtn.innerHTML = `<i data-lucide="circle-dot" class="w-4 h-4"></i> Record Video`;
+      recordBtn.className = "flex items-center gap-2 bg-purple-600 hover:bg-purple-500 active:scale-95 transition text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-purple-600/20";
+      recordingIndicator.classList.add('hidden');
+      recordingIndicator.classList.remove('flex');
+      lucide.createIcons();
+    }
+
+    function showSystemWarning(msg) {
+      const warningToast = document.createElement('div');
+      warningToast.className = "fixed bottom-5 right-5 bg-amber-950 border border-amber-600 text-amber-200 text-xs px-4 py-3 rounded-xl shadow-2xl z-50 flex items-center gap-2 animate-bounce";
+      warningToast.innerHTML = `<i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400"></i> <span>${msg}</span>`;
+      document.body.appendChild(warningToast);
+      lucide.createIcons();
+      setTimeout(() => warningToast.remove(), 4000);
+    }
+
+    // Modal close controls
+    closeModalBtn.addEventListener('click', () => exportModal.classList.add('hidden'));
+    closeModalFooterBtn.addEventListener('click', () => exportModal.classList.add('hidden'));
+  </script>
+</body>
+</html>
